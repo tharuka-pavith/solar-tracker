@@ -11,6 +11,7 @@
 
 #include <avr/io.h>
 #include <util/delay.h>
+#include <math.h>
 
 // Define Servo angles and limits
 int servoh = 0;
@@ -32,12 +33,15 @@ void ADC_config(void);
 void USART_init(void);
 
 void display_ADC(int value);
+int analogRead(int);
 
 void transmit_USART(unsigned char data);
 
+int get_optimum_angle(void);
+
 int analogRead(int channel) {
 	// Function to read the analog value from the specified channel
-	// Implement the analog-to-digital conversion for your specific microcontroller
+	// Implement the analog-to-digital conversion for your specific micro-controller
 	// and return the 10-bit ADC value for the given channel.
 	
 	ADMUX = (ADMUX & 0x20) | (channel & 0x0F);
@@ -46,25 +50,15 @@ int analogRead(int channel) {
 	return ADC;
 }
 
-
 int main(void) {
 	ADC_config();
 	USART_init();
 	
 	int val = 0;
 	while (1) {
-		val = analogRead(0);
+		val = get_optimum_angle();
 		display_ADC(val);
-		
-		val = analogRead(1);
-		display_ADC(val);
-		
-		val = analogRead(2);
-		display_ADC(val);
-		
-		val = analogRead(3);
-		display_ADC(val);
-		_delay_ms(500);
+		_delay_ms(500);		
 
 	}
 	return 0;
@@ -114,3 +108,124 @@ void display_ADC(int value)
 	transmit_USART(0x0D);
 	
 }
+
+
+
+int get_optimum_angle(void){
+	int width = 50;
+	//int optimum_angle = 0;
+	
+	int max_ADC = 0; //0 - 1023
+	int max_index = 0; // index of the max_ADC in the array
+	int ADC_array[] = {0,0,0,0} ; // [0,0,0,0]
+	
+	
+	for (int i = 0; i < 4; i++)
+	{
+		ADC_array[i] = analogRead(i);
+		if(ADC_array[i] > max_ADC)
+		{
+			max_index = i;
+			max_ADC = ADC_array[i];
+		}
+	}
+	
+	
+	int A1 = max_ADC;
+	int A2;
+	
+	
+	if (max_index == 0)
+	{
+		A2 = ADC_array[1];
+		float x_bar = width * ( (A1 + 2 * A2) / (3.0 * (A1 + A2)) );
+		return (15 + x_bar);
+	}
+	else if(max_index == 3)
+	{
+		A2 = ADC_array[2];
+		float x_bar = width * ( (A1 + 2 * A2) / (3.0 * (A1 + A2)) );
+		return (165 - x_bar);
+	}
+	else if (max_index == 1)
+	{
+		if (ADC_array[0] > ADC_array[2])
+		{
+			A2 = ADC_array[0];
+			float x_bar = width * ( (A1 + 2 * A2) / (3.0 * (A1 + A2)) );
+			return (65 - x_bar);
+		}
+		else
+		{
+			A2 = ADC_array[2];
+			float x_bar = width * ( (A1 + 2 * A2) / (3.0 * (A1 + A2)) );
+			return (65 + x_bar);	
+		}
+	}
+	else
+	{
+		if (ADC_array[1] > ADC_array[3])
+		{
+			A2 = ADC_array[1];
+			float x_bar = width * ( (A1 + 2 * A2) / (3.0 * (A1 + A2)) );
+			return (115 - x_bar);
+		}
+		else
+		{
+			A2 = ADC_array[3];
+			float x_bar = width * ( (A1 + 2 * A2) / (3.0 * (A1 + A2)) );
+			return (115 + x_bar);
+		}	
+	}
+}
+
+
+/*
+float get_optimum_angle(void) {
+	int width = 50;
+	int max_ADC = 0; // 0 - 1023
+	int max_index = 0; // index of the max_ADC in the array
+	int ADC_array[] = {0, 0, 0, 0}; // [0, 0, 0, 0]
+
+	for (int i = 0; i < 4; i++) {
+		ADC_array[i] = analogRead(i);
+		if (ADC_array[i] > max_ADC) {
+			max_index = i;
+			max_ADC = ADC_array[i];
+		}
+	}
+
+	int A1 = max_ADC;
+	int A2;
+
+	if (max_index == 0) {
+		A2 = ADC_array[1];
+		float x_bar = width * ((A1 + 2 * A2) / (3.0 * (A1 + A2)));
+		return 15 + x_bar;
+		} else if (max_index == 3) {
+		A2 = ADC_array[2];
+		float x_bar = width * ((A1 + 2 * A2) / (3.0 * (A1 + A2)));
+		return 165 - x_bar;
+		} else if (max_index == 1) {
+		if (ADC_array[0] > ADC_array[2]) {
+			A2 = ADC_array[0];
+			float x_bar = width * ((A1 + 2 * A2) / (3.0 * (A1 + A2)));
+			return 65 - x_bar;
+			} else {
+			A2 = ADC_array[2];
+			float x_bar = width * ((A1 + 2 * A2) / (3.0 * (A1 + A2)));
+			return 65 + x_bar;
+		}
+		} else {
+		if (ADC_array[1] > ADC_array[3]) {
+			A2 = ADC_array[1];
+			float x_bar = width * ((A1 + 2 * A2) / (3.0 * (A1 + A2)));
+			return 115 - x_bar;
+			} else {
+			A2 = ADC_array[3];
+			float x_bar = width * ((A1 + 2 * A2) / (3.0 * (A1 + A2)));
+			return 115 + x_bar;
+		}
+	}
+}
+*/
